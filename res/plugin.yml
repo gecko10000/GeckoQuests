@@ -1,0 +1,6 @@
+name: GeckoQuests
+main: gecko10000.GeckoQuests.GeckoQuests
+version: 0.1
+api-version: 1.18
+depend:
+  - RedLib
