@@ -2,13 +2,13 @@ package gecko10000.GeckoQuests.misc;
 
 import gecko10000.GeckoQuests.GeckoQuests;
 import gecko10000.GeckoQuests.objects.Quest;
-import org.bukkit.Bukkit;
 import redempt.redlib.sql.SQLCache;
 import redempt.redlib.sql.SQLHelper;
 
 import java.sql.Connection;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -35,6 +35,7 @@ public class SQLManager {
                 "quest_uuid VARCHAR(36)," +
                 "player_uuid VARCHAR(36)," +
                 "progress BIGINT," +
+                "PRIMARY KEY (quest_uuid, player_uuid)" +
                 "CHECK (progress > 0)" +
                 ");")
                 .thenAccept(v -> cache = sql.createCache("quest_progress", "progress", "quest_uuid", "player_uuid"));
@@ -57,10 +58,19 @@ public class SQLManager {
 
     public static CompletableFuture<Void> setProgress(Quest quest, UUID playerUUID, Long progress) {
         return progress == null || progress <= 0 ? execute(
-                "DELETE FROM quest_progress WHERE quest_uuid=? and player_uuid=?",
+                "DELETE FROM quest_progress WHERE quest_uuid=? and player_uuid=?;",
                 quest.getUUID(), playerUUID) : execute(
-                "INSERT " + (Config.mySQL ? "" : "OR ") + "IGNORE INTO quest_progress (quest_uuid, player_uuid, progress) VALUES (?, ?, ?);",
+                "REPLACE INTO quest_progress (quest_uuid, player_uuid, progress) VALUES (?, ?, ?);",
                 quest.getUUID(), playerUUID, progress);
+    }
+
+    public static CompletableFuture<Void> addProgress(Quest quest, UUID playerUUID, long progress) {
+        try {
+            return setProgress(quest, playerUUID, getProgress(quest, playerUUID).get() + progress);
+        } catch (InterruptedException | ExecutionException e) {
+            e.printStackTrace();
+        }
+        return CompletableFuture.completedFuture(null);
     }
 
     public static CompletableFuture<Boolean> isDone(Quest quest, UUID playerUUID) {
