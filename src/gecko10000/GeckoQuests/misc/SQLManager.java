@@ -8,7 +8,6 @@ import redempt.redlib.sql.SQLHelper;
 import java.sql.Connection;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -31,60 +30,50 @@ public class SQLManager {
                 ? SQLHelper.openMySQL(Config.ip, Config.port, Config.username, Config.password, Config.database)
                 : SQLHelper.openSQLite(GeckoQuests.getInstance().getDataFolder().toPath().resolve("database.db"));
         sql = new SQLHelper(connection);
-        execute("CREATE TABLE IF NOT EXISTS quest_progress (" +
+        sql.execute("CREATE TABLE IF NOT EXISTS quest_progress (" +
                 "quest_uuid VARCHAR(36)," +
                 "player_uuid VARCHAR(36)," +
                 "progress BIGINT," +
                 "PRIMARY KEY (quest_uuid, player_uuid)" +
-                "CHECK (progress > 0)" +
-                ");")
-                .thenAccept(v -> cache = sql.createCache("quest_progress", "progress", "quest_uuid", "player_uuid"));
+                ");");
+        cache = sql.createCache("quest_progress", "progress", "quest_uuid", "player_uuid");
         sql.setCommitInterval(20*60*5);
     }
 
     public static CompletableFuture<Long> getProgress(Quest quest, UUID playerUUID) {
-        return CompletableFuture.supplyAsync(() -> {
-            try {
-                Long progress = sql.querySingleResultLong(
-                        "SELECT progress FROM quest_progress WHERE quest_uuid=? and player_uuid=?",
-                        quest.getUUID(), playerUUID);
-                return progress == null ? 0 : progress;
-            } catch (Exception e) {
-                e.printStackTrace();
-                return 0L;
-            }
-        }, EXECUTOR);
+        return CompletableFuture.supplyAsync(() -> getProgressNow(quest, playerUUID), EXECUTOR);
+    }
+
+    private static long getProgressNow(Quest quest, UUID playerUUID) {
+        Long progress = sql.querySingleResultLong(
+                "SELECT progress FROM quest_progress WHERE quest_uuid=? and player_uuid=?",
+                quest.getUUID().toString(), playerUUID.toString());
+        return progress == null ? 0 : progress;
     }
 
     public static CompletableFuture<Void> setProgress(Quest quest, UUID playerUUID, Long progress) {
-        return progress == null || progress <= 0 ? execute(
-                "DELETE FROM quest_progress WHERE quest_uuid=? and player_uuid=?;",
-                quest.getUUID(), playerUUID) : execute(
-                "REPLACE INTO quest_progress (quest_uuid, player_uuid, progress) VALUES (?, ?, ?);",
-                quest.getUUID(), playerUUID, progress);
+        return CompletableFuture.runAsync(() -> setProgressNow(quest, playerUUID, progress), EXECUTOR);
+    }
+
+    private static void setProgressNow(Quest quest, UUID playerUUID, Long progress) {
+        if (progress == null || progress <= 0) {
+            sql.execute("DELETE FROM quest_progress WHERE quest_uuid=? and player_uuid=?;",
+                    quest.getUUID().toString(), playerUUID.toString());
+        } else {
+            sql.execute("REPLACE INTO quest_progress (quest_uuid, player_uuid, progress) VALUES (?, ?, ?);",
+                    quest.getUUID().toString(), playerUUID.toString(), progress);
+        }
     }
 
     public static CompletableFuture<Void> addProgress(Quest quest, UUID playerUUID, long progress) {
-        try {
-            return setProgress(quest, playerUUID, getProgress(quest, playerUUID).get() + progress);
-        } catch (InterruptedException | ExecutionException e) {
-            e.printStackTrace();
-        }
-        return CompletableFuture.completedFuture(null);
+        return CompletableFuture.runAsync(() -> {
+            setProgressNow(quest, playerUUID,
+                    getProgressNow(quest, playerUUID) + progress);
+        }, EXECUTOR);
     }
 
     public static CompletableFuture<Boolean> isDone(Quest quest, UUID playerUUID) {
-        return getProgress(quest, playerUUID).thenApply(p -> p >= quest.getAmount());
-    }
-
-    private static CompletableFuture<Void> execute(String statement, Object... args) {
-        return CompletableFuture.runAsync(() -> {
-            try {
-                sql.execute(statement, args);
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        }, EXECUTOR);
+        return CompletableFuture.supplyAsync(() -> getProgressNow(quest, playerUUID) >= quest.getAmount(), EXECUTOR);
     }
 
     public static void shutdown() {
