@@ -1,25 +1,25 @@
 package gecko10000.GeckoQuests.misc;
 
-import redempt.redlib.configmanager.annotations.ConfigValue;
+import redempt.redlib.config.annotations.ConfigName;
 
 public class Config {
 
-    @ConfigValue ("my-sql.use")
+    @ConfigName ("my-sql.use")
     public static boolean mySQL = false;
 
-    @ConfigValue ("my-sql.ip")
+    @ConfigName ("my-sql.ip")
     public static String ip = "192.168.1.1";
 
-    @ConfigValue ("my-sql.port")
+    @ConfigName ("my-sql.port")
     public static int port = 3306;
 
-    @ConfigValue ("my-sql.username")
+    @ConfigName ("my-sql.username")
     public static String username = "root";
 
-    @ConfigValue ("my-sql.password")
+    @ConfigName ("my-sql.password")
     public static String password = "password";
 
-    @ConfigValue ("my-sql.database")
+    @ConfigName ("my-sql.database")
     public static String database = "GeckoQuests";
 
 }

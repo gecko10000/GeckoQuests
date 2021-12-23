@@ -1,26 +1,23 @@
 package gecko10000.GeckoQuests;
 
-import eu.endercentral.crazy_advancements.advancement.AdvancementDisplay;
 import gecko10000.GeckoQuests.misc.Config;
 import gecko10000.GeckoQuests.misc.SQLManager;
 import gecko10000.GeckoQuests.objects.Quest;
-import org.bukkit.Bukkit;
+import org.bukkit.ChatColor;
 import org.bukkit.plugin.java.JavaPlugin;
-import redempt.redlib.commandmanager.CommandParser;
-import redempt.redlib.configmanager.ConfigManager;
-import redempt.redlib.configmanager.annotations.ConfigValue;
+import redempt.redlib.config.ConfigManager;
 
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
 
 public class GeckoQuests extends JavaPlugin {
 
-    private static GeckoQuests instance;
+    private static transient GeckoQuests instance;
     private ConfigManager config;
     private ConfigManager questConfig;
 
-    @ConfigValue
-    private Map<UUID, Quest> quests = ConfigManager.map(UUID.class, Quest.class);
+    private static Map<UUID, Quest> quests = new LinkedHashMap<>();
 
     public void onEnable() {
         instance = this;
@@ -35,11 +32,11 @@ public class GeckoQuests extends JavaPlugin {
     }
 
     public void reload() {
-        config = new ConfigManager(this)
-                .register(Config.class).saveDefaults().load();
-        questConfig = new ConfigManager(this, "quests.yml")
+        config = ConfigManager.create(this)
+                .target(Config.class).saveDefaults().load();
+        questConfig = ConfigManager.create(this, "quests.yml")
                 .addConverter(UUID.class, UUID::fromString, UUID::toString)
-                .register(this).saveDefaults().load();
+                .target(GeckoQuests.class).saveDefaults().load();
         quests.values().forEach(Quest::updateParentOfChildren);
     }
 
@@ -53,6 +50,10 @@ public class GeckoQuests extends JavaPlugin {
 
     public static GeckoQuests getInstance() {
         return instance;
+    }
+
+    public static String makeReadable(String input) {
+        return ChatColor.translateAlternateColorCodes('&', input);
     }
 
 }

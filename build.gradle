@@ -27,7 +27,7 @@ repositories {
 
 dependencies {
     compileOnly "org.spigotmc:spigot-api:1.18.1-R0.1-SNAPSHOT"
-    compileOnly "com.github.Redempt:RedLib:6.2.1.6"
+    compileOnly "com.github.Redempt:RedLib:6.3.0.3"
     implementation files ("libs/CrazyAdvancementsAPI.jar")
 }
 
