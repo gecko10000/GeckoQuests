@@ -1,0 +1,26 @@
+geckoquests,gq,q quest:quest {
+    permission geckoquests.command
+    progress action:action player:target?(context self) long:amount {
+        postarg
+        help Modify a player's quest progress
+        hook modify-progress
+    }
+    edit {
+        permission geckoquests.edit
+        user player
+        help Opens the quest editor
+        hook edit-all
+    }
+    edit {
+        postarg
+        permission geckoquests.edit
+        user player
+        help Opens the quest editor for a specific quest
+        hook edit-quest
+    }
+    reload {
+        permission geckoquests.reload
+        help Reload the configs
+        hook reload
+    }
+}
