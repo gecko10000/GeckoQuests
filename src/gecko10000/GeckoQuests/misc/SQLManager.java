@@ -2,7 +2,8 @@ package gecko10000.GeckoQuests.misc;
 
 import gecko10000.GeckoQuests.GeckoQuests;
 import gecko10000.GeckoQuests.objects.Quest;
-import redempt.redlib.sql.SQLCache;
+import org.bukkit.event.player.PlayerQuitEvent;
+import redempt.redlib.misc.EventListener;
 import redempt.redlib.sql.SQLHelper;
 
 import java.sql.Connection;
@@ -16,7 +17,6 @@ public class SQLManager {
     private static final ExecutorService EXECUTOR = Executors.newSingleThreadExecutor();
 
     private static SQLHelper sql;
-    private static SQLCache cache;
 
     public SQLManager() {
         if (sql != null) {
@@ -28,16 +28,17 @@ public class SQLManager {
     private void startDatabase() {
         Connection connection = Config.mySQL
                 ? SQLHelper.openMySQL(Config.ip, Config.port, Config.username, Config.password, Config.database)
-                : SQLHelper.openSQLite(GeckoQuests.getInstance().getDataFolder().toPath().resolve("database.db"));
+                : SQLHelper.openSQLite(GeckoQuests.get().getDataFolder().toPath().resolve("database.db"));
         sql = new SQLHelper(connection);
-        sql.execute("CREATE TABLE IF NOT EXISTS quest_progress (" +
-                "quest_uuid VARCHAR(36)," +
-                "player_uuid VARCHAR(36)," +
-                "progress BIGINT," +
-                "PRIMARY KEY (quest_uuid, player_uuid)" +
-                ");");
-        cache = sql.createCache("quest_progress", "progress", "quest_uuid", "player_uuid");
+        sql.execute("""
+                CREATE TABLE IF NOT EXISTS quest_progress (
+                quest_uuid VARCHAR(36),
+                player_uuid VARCHAR(36),
+                progress BIGINT,
+                PRIMARY KEY (quest_uuid, player_uuid)
+                );""");
         sql.setCommitInterval(20*60*5);
+        new EventListener<>(PlayerQuitEvent.class, e -> CompletableFuture.runAsync(sql::commit, EXECUTOR));
     }
 
     public static CompletableFuture<Long> getProgress(Quest quest, UUID playerUUID) {
