@@ -5,8 +5,12 @@ import gecko10000.GeckoQuests.objects.Quest;
 import org.bukkit.event.player.PlayerQuitEvent;
 import redempt.redlib.misc.EventListener;
 import redempt.redlib.sql.SQLHelper;
+import redempt.redlib.sql.SQLHelper.Results;
 
 import java.sql.Connection;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
@@ -39,6 +43,18 @@ public class SQLManager {
                 );""");
         sql.setCommitInterval(20*60*5);
         new EventListener<>(PlayerQuitEvent.class, e -> CompletableFuture.runAsync(sql::commit, EXECUTOR));
+    }
+
+    public static CompletableFuture<Map<Quest, Long>> getAllProgress(UUID playerUUID) {
+        return CompletableFuture.supplyAsync(() -> {
+            Map<Quest, Long> progress = new HashMap<>();
+            Results results = sql.queryResults("SELECT quest_uuid, progress FROM quest_progress WHERE player_uuid=?", playerUUID.toString());
+            results.forEach(r -> Optional.ofNullable(
+                    QuestManager.quests().get(UUID.fromString(r.getString(1))))
+                    .ifPresent(q -> progress.put(q, r.getLong(2))));
+            results.close();
+            return progress;
+        }, EXECUTOR);
     }
 
     public static CompletableFuture<Long> getProgress(Quest quest, UUID playerUUID) {
