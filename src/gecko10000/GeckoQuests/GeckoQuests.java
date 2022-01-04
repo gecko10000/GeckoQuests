@@ -25,21 +25,21 @@ public class GeckoQuests extends JavaPlugin {
 
     public void onEnable() {
         instance = this;
+        reload(false);
+        new SQLManager();
         new QuestManager();
         new CommandParser(getResource("command.rdcml"))
                 .setArgTypes(ArgType.of("action", QuestProgressAction.class),
                         new ArgType<>("quest", s -> QuestManager.quests().values().stream().filter(q -> q.getName().equalsIgnoreCase(s)).findFirst().orElse(null))
                                 .tabStream(sender -> QuestManager.quests().values().stream().map(Quest::getName)))
                 .parse().register(getName(), new CommandHandler());
-        reload();
-        new SQLManager();
     }
 
     public void onDisable() {
         SQLManager.shutdown();
     }
 
-    public void reload() {
+    public void reload(boolean sendAdvancements) {
         Messages.load(this);
         config = ConfigManager.create(this)
                 .target(Config.class).saveDefaults().load();
@@ -48,13 +48,15 @@ public class GeckoQuests extends JavaPlugin {
                 .addConverter(AdvancementVisibility.class, AdvancementVisibility::parseVisibility, AdvancementVisibility::getName)
                 .target(QuestManager.class).saveDefaults().load();
         QuestManager.quests().values().forEach(Quest::updateParentOfChildren);
-        QuestManager.update();
+        if (sendAdvancements) {
+            QuestManager.updateAdvancements();
+        }
         mainEditor = new MainEditor();
     }
 
     public void saveQuests() {
         questConfig.save();
-        QuestManager.update();
+        QuestManager.updateAdvancements();
     }
 
     public static GeckoQuests get() {

@@ -41,7 +41,7 @@ public class CommandHandler {
 
     @CommandHook("reload")
     public void reload(CommandSender sender) {
-        GeckoQuests.get().reload();
+        GeckoQuests.get().reload(true);
         sender.sendMessage(FormatUtils.color("&aConfigs reloaded!"));
     }
 
