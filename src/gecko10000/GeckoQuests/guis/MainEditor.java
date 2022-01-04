@@ -25,7 +25,7 @@ public class MainEditor {
 
     public MainEditor() {
         this.gui = new InventoryGUI(Bukkit.createInventory(null, SIZE, FormatUtils.color("&2Quest Editor")));
-        this.panel = new PaginationPanel(gui);
+        this.panel = new PaginationPanel(gui, InventoryGUI.FILLER);
         setup();
     }
 
@@ -57,6 +57,7 @@ public class MainEditor {
                 case SHIFT_RIGHT,SHIFT_LEFT -> {
                     QuestManager.removeQuest(quest);
                     refreshButtons();
+                    GeckoQuests.get().saveQuests();
                 }
                 default -> new QuestEditor(quest).open(evt.getWhoClicked());
             }
