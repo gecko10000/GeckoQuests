@@ -29,13 +29,14 @@ public class Quest {
 
     @ConfigPath
     private UUID uuid = UUID.randomUUID();
-    private String name;
     private Set<UUID> children = new LinkedHashSet<>();
     @ConfigName("collection-item")
     private ItemStack collectionItem = new ItemStack(Material.BARRIER);
     private long amount = Long.MAX_VALUE;
     @ConfigName("sync-item")
     private boolean syncItem = true;
+    @ConfigName("exact-item")
+    private boolean exactItem = true;
     private Display display = new Display();
 
     private transient Quest parent;
@@ -44,16 +45,16 @@ public class Quest {
     private static class Display {
 
         private ItemStack icon = new ItemStack(Material.BARRIER);
-        private String title = "Name";
+        private String name = "Name";
         private String description = "Description";
         private AdvancementDisplay.AdvancementFrame frame = AdvancementDisplay.AdvancementFrame.TASK;
         private AdvancementVisibility visibility = AdvancementVisibility.ALWAYS;
-        private float x;
+        private float x = 1;
         private float y;
         private String texture;
 
         private AdvancementDisplay getDisplay() {
-            return new AdvancementDisplay(icon, toJson(title), toJson(description), frame, texture, visibility);
+            return new AdvancementDisplay(icon, toJson(name), toJson(description), frame, texture, visibility);
         }
 
         private JSONMessage toJson(String input) {
@@ -71,16 +72,7 @@ public class Quest {
     private Quest() {}
 
     public Quest(String name) {
-        this.name = name;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public Quest setName(String name) {
-        this.name = name;
-        return this;
+        setName(name);
     }
 
     public UUID getUUID() {
@@ -168,6 +160,15 @@ public class Quest {
         return this;
     }
 
+    public boolean isExactItem() {
+        return exactItem;
+    }
+
+    public Quest setExactItem(boolean exactItem) {
+        this.exactItem = exactItem;
+        return this;
+    }
+
     public long getAmount() {
         return amount;
     }
@@ -177,12 +178,12 @@ public class Quest {
         return this;
     }
 
-    public String getTitle() {
-        return this.display.title;
+    public String getName() {
+        return this.display.name;
     }
 
-    public Quest setTitle(String title) {
-        this.display.title = title;
+    public Quest setName(String title) {
+        this.display.name = title;
         return this;
     }
 
@@ -255,10 +256,10 @@ public class Quest {
     private transient Advancement advancement;
 
     public Advancement getAdvancement() {
-        return advancement == null ? updateAdvancement() : advancement;
+        return advancement == null ? updateAdvancement(false) : advancement;
     }
 
-    public Advancement updateAdvancement() {
+    public Advancement updateAdvancement(boolean send) {
         AdvancementDisplay display = this.display.getDisplay();
         Advancement parentAdv = parent == null ? null : parent.getAdvancement();
         display.setPositionOrigin(parentAdv);
@@ -266,7 +267,9 @@ public class Quest {
         Advancement advancement = new Advancement(parentAdv, nameKey(), display);
         advancement.setCriteria(new Criteria(isRoot() ? 1 : 100));
         this.advancement = advancement;
-        QuestManager.update();
+        if (send) {
+            QuestManager.updateAdvancements();
+        }
         return advancement;
     }
 
