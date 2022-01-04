@@ -12,6 +12,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 public class QuestManager {
@@ -27,31 +28,57 @@ public class QuestManager {
         return quests;
     }
 
-    private static LinkedHashSet<Quest> additionOrder() {
-        LinkedHashSet<Quest> ordered = new LinkedHashSet<>();
+    private static Map<Quest, LinkedHashSet<Quest>> additionOrder() {
+        Map<Quest, LinkedHashSet<Quest>> ordered = new LinkedHashMap<>();
         quests.values().stream()
                 .filter(Quest::isRoot)
-                .forEach(root -> root.getAllChildren(ordered));
+                .forEach(root -> {
+                    LinkedHashSet<Quest> children = new LinkedHashSet<>();
+                    root.getAllChildren(children);
+                    ordered.put(root, children);
+                });
         return ordered;
     }
 
-    public static void update() {
-        Bukkit.getOnlinePlayers().forEach(QuestManager::update);
+    public static void updateAdvancements() {
+        Bukkit.getOnlinePlayers().forEach(QuestManager::updateAdvancements);
     }
 
-    private static void update(Player player) {
-        new AdvancementsPacket(player, true,
-                additionOrder().stream()
-                        .map(Quest::getAdvancement)
-                        .collect(Collectors.toList()), null).send();
+    /*
+    Retrieve progress from the database,
+    remove existing advancements, set new progress, and send it to the player
+    (the progress must be set before the info is sent to the player, duh)
+     */
+    private static void updateAdvancements(Player player) {
+        updateProgress(player).thenAccept(v -> {
+            new AdvancementsPacket(player, true, null, null).send();
+            additionOrder().values()
+                    .forEach(s -> new AdvancementsPacket(player, false, s.stream()
+                            .map(Quest::getAdvancement)
+                            .collect(Collectors.toList()), null).send());
+        });
+    }
+
+    private static CompletableFuture<Void> updateProgress(Player player) {
+        quests.values().stream()
+                .filter(Quest::isRoot)
+                .map(Quest::getAdvancement)
+                .forEach(a -> a.getProgress(player).setCriteriaProgress(1));
+        return SQLManager.getAllProgress(player.getUniqueId())
+                .thenAccept(m -> m.forEach((q, p) -> {
+                    q.getAdvancement().getProgress(player)
+                            .setCriteriaProgress(Utils.completionPercentage(q, p));
+                }));
     }
 
     public static void addQuest(Quest quest) {
         quests.put(quest.getUUID(), quest);
+        updateAdvancements();
     }
 
     public static void removeQuest(Quest quest) {
         quests.remove(quest.getUUID());
+        updateAdvancements();
     }
 
     private void loadingEvents() {
@@ -59,9 +86,7 @@ public class QuestManager {
     }
 
     private void addPlayer(Player player) {
-        Task.syncDelayed(() -> {
-            update(player);
-        }, 2);
+        Task.syncDelayed(() -> updateAdvancements(player), 2);
     }
 
 }
