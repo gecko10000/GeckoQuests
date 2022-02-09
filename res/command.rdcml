@@ -1,7 +1,8 @@
 geckoquests,gq,q quest:quest {
     permission geckoquests.command
-    progress action:action player:target?(context self) long:amount {
+    progress action:action offlineplayer:target?(context self) long:amount {
         postarg
+        permission geckoquests.modifyprogress
         help Modify a player's quest progress
         hook modify-progress
     }

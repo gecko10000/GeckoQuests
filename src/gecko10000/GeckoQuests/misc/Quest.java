@@ -1,4 +1,4 @@
-package gecko10000.GeckoQuests.objects;
+package gecko10000.GeckoQuests.misc;
 
 import eu.endercentral.crazy_advancements.JSONMessage;
 import eu.endercentral.crazy_advancements.NameKey;
@@ -6,8 +6,6 @@ import eu.endercentral.crazy_advancements.advancement.Advancement;
 import eu.endercentral.crazy_advancements.advancement.AdvancementDisplay;
 import eu.endercentral.crazy_advancements.advancement.AdvancementVisibility;
 import eu.endercentral.crazy_advancements.advancement.criteria.Criteria;
-import gecko10000.GeckoQuests.misc.QuestManager;
-import gecko10000.GeckoQuests.misc.Utils;
 import net.md_5.bungee.api.chat.BaseComponent;
 import net.md_5.bungee.api.chat.TextComponent;
 import org.bukkit.Material;
@@ -18,10 +16,7 @@ import redempt.redlib.config.annotations.ConfigPath;
 import redempt.redlib.itemutils.ItemBuilder;
 import redempt.redlib.misc.FormatUtils;
 
-import java.util.LinkedHashSet;
-import java.util.Objects;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @ConfigMappable
@@ -37,12 +32,12 @@ public class Quest {
     private boolean syncItem = true;
     @ConfigName("exact-item")
     private boolean exactItem = true;
-    private Display display = new Display();
+    protected Display display = new Display();
 
     private transient Quest parent;
 
     @ConfigMappable
-    private static class Display {
+    protected static class Display {
 
         private ItemStack icon = new ItemStack(Material.BARRIER);
         private String name = "Name";
@@ -51,7 +46,7 @@ public class Quest {
         private AdvancementVisibility visibility = AdvancementVisibility.ALWAYS;
         private float x = 1;
         private float y;
-        private String texture;
+        protected String texture;
 
         private AdvancementDisplay getDisplay() {
             return new AdvancementDisplay(icon, toJson(name), toJson(description), frame, texture, visibility);
@@ -98,6 +93,10 @@ public class Quest {
                 .collect(Collectors.toSet());
     }
 
+    public LinkedHashSet<Quest> getAllChildren() {
+        return getAllChildren(new LinkedHashSet<>());
+    }
+
     public LinkedHashSet<Quest> getAllChildren(LinkedHashSet<Quest> set) {
         set.add(this);
         getChildren().forEach(q -> q.getAllChildren(set));
@@ -112,9 +111,10 @@ public class Quest {
         return this;
     }
 
+    // name NOT set here, set by receiving code
     public ItemBuilder editorItem() {
         return new ItemBuilder(getIcon())
-                .setName(FormatUtils.color("&b" + getName()))
+                .addLore(List.of("", FormatUtils.color("&2" + getName()), ""))
                 .addLore(FormatUtils.lineWrap(getDescription(), 35).stream()
                         .map(s -> "&2" + s)
                         .map(FormatUtils::color)
@@ -232,15 +232,6 @@ public class Quest {
         return this;
     }
 
-    public String getTexture() {
-        return this.display.texture;
-    }
-
-    public Quest setTexture(String texture) {
-        this.display.texture = texture;
-        return this;
-    }
-
     public Quest getParent() {
         return parent;
     }
@@ -268,13 +259,14 @@ public class Quest {
         advancement.setCriteria(new Criteria(isRoot() ? 1 : 100));
         this.advancement = advancement;
         if (send) {
+            getAllChildren(new LinkedHashSet<>()).forEach(q -> q.updateAdvancement(false));
             QuestManager.updateAdvancements();
         }
         return advancement;
     }
 
     public NameKey nameKey() {
-        return new NameKey("gq", uuid.toString() + getFrame());
+        return new NameKey("gq", uuid.toString());
     }
 
 }
