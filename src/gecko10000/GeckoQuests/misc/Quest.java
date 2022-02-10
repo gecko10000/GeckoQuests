@@ -32,7 +32,7 @@ public class Quest {
     private boolean syncItem = true;
     @ConfigName("exact-item")
     private boolean exactItem = true;
-    protected Display display = new Display();
+    private Display display = new Display();
 
     private transient Quest parent;
 
@@ -46,7 +46,7 @@ public class Quest {
         private AdvancementVisibility visibility = AdvancementVisibility.ALWAYS;
         private float x = 1;
         private float y;
-        protected String texture;
+        private String texture;
 
         private AdvancementDisplay getDisplay() {
             return new AdvancementDisplay(icon, toJson(name), toJson(description), frame, texture, visibility);
@@ -229,6 +229,15 @@ public class Quest {
 
     public Quest setY(float y) {
         this.display.y = y;
+        return this;
+    }
+
+    public String getTexture() {
+        return this.display.texture;
+    }
+
+    public Quest setTexture(String texture) {
+        this.display.texture = texture;
         return this;
     }
 
